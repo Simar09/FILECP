@@ -1731,28 +1731,32 @@ _SESSION_PAGE = """<!DOCTYPE html>
       startLive(data.expires_at);
     }
 
+    function triggerDownload(url, fallbackName) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fallbackName;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
     async function dlFile(fn) {
       try {
-        const res = await fetch('/api/download/' + SESSION_ID + '/' + fn);
+        const downloadUrl = '/api/download/' + SESSION_ID + '/' + fn;
+        const res = await fetch(downloadUrl);
         if (!res.ok) throw new Error('Download failed');
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = decodeURIComponent(fn);
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        triggerDownload(downloadUrl, decodeURIComponent(fn));
       } catch(e) { showToast('Download failed', 'error'); }
     }
     async function downloadAll() {
       try {
-        const res = await fetch('/api/download-all/' + SESSION_ID);
+        const downloadUrl = '/api/download-all/' + SESSION_ID;
+        const res = await fetch(downloadUrl);
         if (!res.ok) throw new Error('Download failed');
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'filecp_' + SESSION_ID + '.zip';
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        triggerDownload(downloadUrl, 'filecp_' + SESSION_ID + '.zip');
       } catch(e) { showToast('Download failed', 'error'); }
     }
     function openPreview(src) { document.getElementById('modalImage').src = src; document.getElementById('imageModal').classList.add('active'); }
