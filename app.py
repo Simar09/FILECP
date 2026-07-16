@@ -147,10 +147,6 @@ async def get_favicon():
         return FileResponse("logo.png")
     raise HTTPException(status_code=404, detail="Favicon not found")
 
-@app.get("/healthz")
-async def health_check():
-    return JSONResponse({"status": "ok"})
-
 @app.post("/api/upload")
 async def api_upload(
     request: Request,
@@ -191,12 +187,12 @@ async def api_upload(
 
         if file_size > MAX_SINGLE_FILE:
             shutil.rmtree(session_dir, ignore_errors=True)
-            raise HTTPException(400, f"File '{safe_name}' exceeds 1 GB limit.")
+            raise HTTPException(400, f"File '{safe_name}' exceeds 200 MB limit.")
 
         total_size += file_size
         if total_size > MAX_UPLOAD_SIZE:
             shutil.rmtree(session_dir, ignore_errors=True)
-            raise HTTPException(400, "Total upload size exceeds 2 GB limit.")
+            raise HTTPException(400, "Total upload size exceeds 500 MB limit.")
 
         encrypted = CIPHER.encrypt(content)
         file_path = session_dir / safe_name
@@ -1731,32 +1727,38 @@ _SESSION_PAGE = """<!DOCTYPE html>
       startLive(data.expires_at);
     }
 
-    function triggerDownload(url, fallbackName) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fallbackName;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-
     async function dlFile(fn) {
+      if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.download_file(SESSION_ID, fn);
+        showToast('Download started', 'info');
+        return;
+      }
       try {
-        const downloadUrl = '/api/download/' + SESSION_ID + '/' + fn;
-        const res = await fetch(downloadUrl);
+        const res = await fetch('/api/download/' + SESSION_ID + '/' + fn);
         if (!res.ok) throw new Error('Download failed');
-        triggerDownload(downloadUrl, decodeURIComponent(fn));
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = decodeURIComponent(fn);
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       } catch(e) { showToast('Download failed', 'error'); }
     }
     async function downloadAll() {
+      if (window.pywebview && window.pywebview.api) {
+        window.pywebview.api.download_all(SESSION_ID);
+        showToast('Download started', 'info');
+        return;
+      }
       try {
-        const downloadUrl = '/api/download-all/' + SESSION_ID;
-        const res = await fetch(downloadUrl);
+        const res = await fetch('/api/download-all/' + SESSION_ID);
         if (!res.ok) throw new Error('Download failed');
-        triggerDownload(downloadUrl, 'filecp_' + SESSION_ID + '.zip');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'filecp_' + SESSION_ID + '.zip';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       } catch(e) { showToast('Download failed', 'error'); }
     }
     function openPreview(src) { document.getElementById('modalImage').src = src; document.getElementById('imageModal').classList.add('active'); }
