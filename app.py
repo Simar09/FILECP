@@ -972,43 +972,65 @@ _WELCOME_PAGE = """<!DOCTYPE html>
   <title>MOBILE2PC — Secured Crypto AnyFile Share</title>
   """ + _SHARED_STYLES + """
   <style>
+    body {
+      background-color: #050505;
+      background-image:
+        radial-gradient(circle at 15% 20%, rgba(138, 43, 226, 0.18), transparent 45%),
+        radial-gradient(circle at 85% 25%, rgba(0, 255, 255, 0.15), transparent 45%),
+        radial-gradient(circle at 30% 80%, rgba(255, 215, 0, 0.12), transparent 40%),
+        radial-gradient(circle at 75% 75%, rgba(0, 255, 128, 0.12), transparent 45%),
+        radial-gradient(circle at 50% 50%, rgba(0, 102, 255, 0.15), transparent 50%);
+      background-attachment: fixed;
+    }
     .hero {
       min-height: 100vh; display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       text-align: center; padding: 60px 24px;
+      position: relative;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.35);
+      z-index: 0;
     }
     .content-wrapper {
       position: relative; z-index: 1;
       display: flex; flex-direction: column; align-items: center;
-      max-width: 700px;
+      max-width: 900px;
     }
     .hero-brand {
       font-family: "Times New Roman", Times, serif;
-      font-size: clamp(36pt, 6vw, 42pt);
+      font-size: clamp(48pt, 8vw, 72pt);
       font-weight: bold;
-      line-height: 1.2;
-      margin-bottom: 4px;
+      line-height: 1.1;
+      margin-bottom: 8px;
       color: #ffffff;
       text-align: center;
+      text-shadow: 0 4px 12px rgba(0,0,0,0.5);
     }
     .hero-subbrand {
       font-family: "Times New Roman", Times, serif;
-      font-size: clamp(30pt, 5vw, 36pt);
+      font-size: clamp(36pt, 6vw, 48pt);
       font-weight: bold;
       line-height: 1.2;
-      margin-bottom: 32px;
+      margin-bottom: 40px;
       color: #ffffff;
       text-align: center;
+      text-shadow: 0 4px 12px rgba(0,0,0,0.5);
     }
     .features-list {
       font-family: "Times New Roman", Times, serif;
-      font-size: clamp(16pt, 3vw, 24pt);
+      font-size: clamp(12pt, 1.8vw, 20pt);
       color: #ffffff;
-      margin-bottom: 48px;
+      margin-bottom: 56px;
       display: flex;
       flex-direction: row;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      white-space: nowrap;
       justify-content: center;
+      align-items: center;
       gap: 12px;
       text-align: center;
     }
@@ -1071,58 +1093,59 @@ _DASHBOARD_PAGE = """<!DOCTYPE html>
   <title>Dashboard — MOBILE2PC</title>
   """ + _SHARED_STYLES + """
   <style>
+    body {
+      background-color: #ffffff;
+      color: #333333;
+    }
     .page {
       min-height: 100vh; display: flex; flex-direction: column;
       align-items: center; justify-content: center; padding: 40px 24px;
     }
     .page-brand {
-      font-family: var(--font-pixel); font-size: 0.5rem;
-      color: var(--text-muted); text-transform: uppercase;
+      font-family: var(--font-body); font-size: 1.2rem; font-weight: 600;
+      color: #666666; text-transform: uppercase;
       letter-spacing: 0.08em; margin-bottom: 8px; line-height: 2;
     }
     .page-title {
-      font-family: var(--font-pixel); font-size: 0.6rem;
-      color: var(--text-secondary); margin-bottom: 48px;
-      text-transform: uppercase; letter-spacing: 0.06em; line-height: 2;
+      font-family: var(--font-body); font-size: 1.5rem; font-weight: bold;
+      color: #1a1a1a; margin-bottom: 48px;
+      text-transform: none; letter-spacing: normal; line-height: 1.5;
     }
     .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 740px; width: 100%; }
     @media (max-width: 600px) { .action-grid { grid-template-columns: 1fr; } }
 
     .action-card {
       display: flex; flex-direction: column; align-items: flex-start;
-      padding: 36px; text-decoration: none; color: var(--text-primary);
-      border: 1px solid var(--border-color); background: var(--bg-surface);
+      padding: 36px; text-decoration: none; color: #1a1a1a;
+      border: 1px solid #e0e0e0; background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
       transition: all var(--transition); position: relative; overflow: hidden;
     }
-    .action-card::before {
-      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
-      background: var(--text-bright); transform: scaleX(0); transform-origin: left;
-      transition: transform var(--transition);
-    }
     .action-card:hover {
-      border-color: var(--border-light); background: var(--bg-surface-hover);
-      box-shadow: 0 0 30px rgba(255,255,255,0.03);
+      border-color: #000000;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
     }
-    .action-card:hover::before { transform: scaleX(1); }
 
-    .action-icon { font-size: 32px; color: var(--text-bright); margin-bottom: 20px; }
+    .action-icon { font-size: 32px; color: #1a1a1a; margin-bottom: 20px; }
     .action-card h2 {
-      font-family: var(--font-pixel); font-size: 0.7rem;
-      text-transform: uppercase; margin-bottom: 16px; letter-spacing: 0.04em;
-      line-height: 2;
+      font-family: var(--font-body); font-size: 1.4rem; font-weight: 600;
+      text-transform: none; margin-bottom: 16px; letter-spacing: normal;
+      line-height: 1.2;
     }
     .action-features {
       list-style: none; display: flex; flex-direction: column; gap: 10px;
-      font-size: 0.8rem; color: var(--text-secondary); font-family: var(--font-mono);
+      font-size: 0.95rem; color: #555555; font-family: var(--font-body);
     }
     .action-features li { display: flex; align-items: center; gap: 8px; }
-    .action-features li .material-icons-round { font-size: 14px; color: var(--text-muted); }
+    .action-features li .material-icons-round { font-size: 16px; color: #888888; }
   </style>
 </head>
 <body>
   <main class="page">
     <div class="page-brand animate-in">MOBILE2PC</div>
-    <div class="page-title animate-in">// SELECT MODE</div>
+    <div class="page-title animate-in">Choose what you want to do</div>
 
     <div class="action-grid animate-in" style="animation-delay: 0.1s;">
       <a href="/send" class="action-card" id="sendCard">
@@ -1158,8 +1181,10 @@ _SEND_PAGE = """<!DOCTYPE html>
   <title>Send File — MOBILE2PC</title>
   """ + _SHARED_STYLES + """
   <style>
+    body { background-color: #ffffff; color: #333333; }
     .page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 32px 20px; }
     .header { text-align: center; margin-bottom: 28px; width: 100%; max-width: 620px; }
+    .header h1 { color: #1a1a1a; font-family: var(--font-body); font-weight: bold; }
     .state-panel { width: 100%; max-width: 620px; }
     .sent-file-list { margin-bottom: 16px; }
     .add-more-section { margin-bottom: 16px; }
@@ -1631,9 +1656,11 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
   <title>Receive File — MOBILE2PC</title>
   """ + _SHARED_STYLES + """
   <style>
+    body { background-color: #ffffff; color: #333333; }
     .page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 32px 20px; }
     .header { text-align: center; margin-bottom: 28px; width: 100%; max-width: 620px; }
-    .header p { color: var(--text-muted); font-family: var(--font-pixel); font-size: 0.4rem;
+    .header h1 { color: #1a1a1a; font-family: var(--font-body); font-weight: bold; }
+    .header p { color: #666666; font-family: var(--font-body); font-size: 0.85rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.06em; margin-top: 8px; line-height: 2; }
     .content { width: 100%; max-width: 620px; }
     .setup-card { border-top: 2px solid var(--text-bright); }
@@ -1751,10 +1778,30 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
         sessionId = data.session_id;
 
         document.getElementById('setupCard').style.display = 'none';
-        document.getElementById('qrImage').src = '/api/receive-qr/' + sessionId;
-        document.getElementById('qrSection').style.display = 'flex';
+        
+        const qrImage = document.getElementById('qrImage');
+        const qrSection = document.getElementById('qrSection');
+        
+        qrSection.style.display = 'flex';
+        qrImage.style.display = 'none';
+        
+        // Show a loading text or spinner here if desired, using a separate element
+        
+        qrImage.onload = () => {
+          qrImage.style.display = 'block';
+          startPolling();
+        };
+        
+        qrImage.onerror = () => {
+          showToast('Failed to load QR image', 'error');
+          btn.disabled = false;
+          btn.textContent = 'GENERATE QR CODE';
+          document.getElementById('setupCard').style.display = 'block';
+          qrSection.style.display = 'none';
+        };
 
-        startPolling();
+        qrImage.src = '/api/receive-qr/' + sessionId;
+
       } catch (e) {
         showToast('Failed to create session', 'error');
         btn.disabled = false;
