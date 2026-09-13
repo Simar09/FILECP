@@ -1929,8 +1929,6 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
       document.getElementById('modalAudio').src = '';
     }
 
-    }
-
     async function closeSession() {
       try {
         await fetch('/api/close-session/' + sessionId, { method: 'POST' });
