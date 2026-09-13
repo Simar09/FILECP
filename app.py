@@ -288,7 +288,7 @@ async def api_session_info(session_id: str):
     return JSONResponse({
         "id": s["id"],
         "files": s["files"],
-        "note": s["note"],
+        "note": s.get("note", ""),
         "created_at": s["created_at"],
         "expires_at": s["expires_at"],
         "remaining_seconds": remaining,
@@ -296,6 +296,7 @@ async def api_session_info(session_id: str):
         "total_size_formatted": s["total_size_formatted"],
         "download_count": s["download_count"],
         "status": s.get("status", "ACTIVE"),
+        "waiting": s.get("waiting", False),
     })
 
 
@@ -448,6 +449,7 @@ async def api_create_receive_session(duration: int = Form(10)):
         "download_count": 0,
         "status": "ACTIVE",
         "waiting": True,
+        "mode": "receive"
     }
     return JSONResponse({"session_id": sid})
 
@@ -502,10 +504,9 @@ _SHARED_STYLES = """
     --error-dim: rgba(255,51,51,0.10);
     --warning: #ffaa00;
 
-    --radius: 0px;
+    --radius: 4px;
     --transition: 0.15s ease-out;
 
-    --font-pixel: 'Press Start 2P', monospace;
     --font-mono: 'JetBrains Mono', monospace;
     --font-body: 'Inter', sans-serif;
   }
@@ -532,18 +533,14 @@ _SHARED_STYLES = """
     background-size: 24px 24px;
   }
 
-  /* Subtle scanline overlay */
+  /* Glossy ambient glow */
   body::after {
     content: '';
     position: fixed; inset: 0;
-    pointer-events: none; z-index: 9998;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 3px,
-      rgba(0,0,0,0.02) 3px,
-      rgba(0,0,0,0.02) 4px
-    );
+    pointer-events: none; z-index: -2;
+    background: 
+      radial-gradient(circle at 15% 30%, rgba(120, 0, 255, 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 85% 70%, rgba(255, 200, 0, 0.06) 0%, transparent 40%);
   }
 
   a { color: var(--text-primary); text-decoration: none; transition: color var(--transition); }
@@ -576,35 +573,36 @@ _SHARED_STYLES = """
 
   /* ── Typography ── */
   h1, h2, h3 {
-    font-family: var(--font-pixel);
-    font-weight: 400;
+    font-family: var(--font-body);
+    font-weight: 600;
     text-transform: uppercase;
-    line-height: 1.8;
+    line-height: 1.6;
   }
-  h1 { font-size: clamp(0.9rem, 2.5vw, 1.3rem); letter-spacing: 0.02em; }
-  h2 { font-size: clamp(0.65rem, 1.8vw, 0.85rem); letter-spacing: 0.02em; }
-  h3 { font-size: clamp(0.55rem, 1.4vw, 0.7rem); }
+  h1 { font-size: clamp(1.2rem, 3vw, 1.8rem); letter-spacing: 0.02em; }
+  h2 { font-size: clamp(1rem, 2vw, 1.2rem); letter-spacing: 0.02em; }
+  h3 { font-size: clamp(0.9rem, 1.5vw, 1rem); }
 
   .section-label {
-    font-family: var(--font-pixel);
-    font-size: 0.55rem;
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.05em;
     margin-bottom: 12px;
-    line-height: 2;
+    line-height: 1.8;
   }
 
   /* ── Buttons ── */
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 14px 24px;
-    font-family: var(--font-pixel); font-size: 0.55rem;
+    padding: 14px 24px; border-radius: var(--radius);
+    font-family: var(--font-body); font-size: 0.9rem; font-weight: 600;
     cursor: pointer; border: 1px solid var(--border-light);
     transition: all var(--transition);
     text-decoration: none; white-space: nowrap; text-transform: uppercase;
     background: var(--bg-surface); color: var(--text-primary);
-    letter-spacing: 0.04em; line-height: 1.6;
+    letter-spacing: 0.02em; line-height: 1.6;
   }
   .btn:hover { border-color: var(--border-bright); background: var(--bg-surface-hover); }
 
@@ -632,7 +630,7 @@ _SHARED_STYLES = """
     box-shadow: 0 0 20px rgba(255,51,51,0.2);
   }
 
-  .btn-sm { padding: 10px 16px; font-size: 0.5rem; }
+  .btn-sm { padding: 10px 16px; font-size: 0.8rem; }
   .btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
   .btn .material-icons-round { font-size: 16px; }
 
@@ -667,8 +665,8 @@ _SHARED_STYLES = """
     background-position: right 12px center;
     padding-right: 36px;
     cursor: pointer;
-    font-family: var(--font-pixel); font-size: 0.5rem; letter-spacing: 0.04em;
-    line-height: 2;
+    font-family: var(--font-body); font-size: 0.9rem; font-weight: 500;
+    line-height: 1.6;
   }
 
   /* ── Drop Zone ── */
@@ -689,9 +687,9 @@ _SHARED_STYLES = """
     box-shadow: inset 0 0 30px rgba(255,255,255,0.03);
   }
   .drop-zone-icon { font-size: 40px; color: var(--text-muted); margin-bottom: 16px; }
-  .drop-zone-title { font-family: var(--font-pixel); font-size: 0.55rem; color: var(--text-secondary);
-    text-transform: uppercase; margin-bottom: 8px; line-height: 2; }
-  .drop-zone-sub { font-size: 0.8rem; color: var(--text-muted); }
+  .drop-zone-title { font-family: var(--font-body); font-size: 1rem; font-weight: 600; color: var(--text-secondary);
+    text-transform: uppercase; margin-bottom: 8px; line-height: 1.8; }
+  .drop-zone-sub { font-size: 0.85rem; color: var(--text-muted); }
 
   /* ── File List Items ── */
   .file-list { display: flex; flex-direction: column; }
@@ -711,11 +709,10 @@ _SHARED_STYLES = """
   }
   .file-item-size { color: var(--text-secondary); font-size: 0.75rem; flex-shrink: 0; }
   .file-item-ext {
-    font-family: var(--font-pixel); font-size: 0.4rem;
-    padding: 3px 6px; background: rgba(255,255,255,0.04);
+    font-family: var(--font-body); font-size: 0.7rem; font-weight: 600;
+    padding: 3px 6px; background: rgba(255,255,255,0.04); border-radius: 4px;
     border: 1px solid var(--border-color); color: var(--text-muted);
     text-transform: uppercase; flex-shrink: 0; line-height: 1.6;
-    letter-spacing: 0.05em;
   }
   .file-item-remove {
     background: none; border: none; color: var(--text-muted);
@@ -736,8 +733,8 @@ _SHARED_STYLES = """
   .duration-row .input-field:first-child { flex: 0 0 100px; text-align: center; }
   .duration-row select.input-field { flex: 1; }
   .duration-error {
-    font-family: var(--font-pixel); font-size: 0.45rem; color: var(--error);
-    margin-top: 8px; line-height: 1.8; display: none;
+    font-family: var(--font-body); font-size: 0.8rem; font-weight: 500; color: var(--error);
+    margin-top: 8px; line-height: 1.6; display: none;
   }
 
   /* ── QR Panel ── */
@@ -762,17 +759,17 @@ _SHARED_STYLES = """
   }
   .qr-frame img { display: block; width: 220px; height: 220px; image-rendering: pixelated; }
   .qr-label {
-    font-family: var(--font-pixel); font-size: 0.45rem;
+    font-family: var(--font-body); font-size: 0.85rem; font-weight: 600;
     color: var(--text-muted); text-transform: uppercase;
-    letter-spacing: 0.06em; line-height: 2;
+    letter-spacing: 0.04em; line-height: 1.8;
   }
 
   /* ── Status Badge ── */
   .status-badge {
-    display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px;
-    font-family: var(--font-pixel); font-size: 0.45rem; text-transform: uppercase;
-    border: 1px solid var(--border-color); background: var(--bg-surface);
-    letter-spacing: 0.04em; line-height: 2; margin-bottom: 20px;
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px;
+    font-family: var(--font-body); font-size: 0.85rem; font-weight: 600; text-transform: uppercase;
+    border: 1px solid var(--border-color); background: var(--bg-surface); border-radius: 20px;
+    letter-spacing: 0.02em; line-height: 1.6; margin-bottom: 20px;
   }
   .status-dot {
     width: 6px; height: 6px; display: inline-block;
@@ -788,8 +785,8 @@ _SHARED_STYLES = """
   }
   .empty-state .material-icons-round { font-size: 36px; margin-bottom: 12px; display: block; }
   .empty-state-title {
-    font-family: var(--font-pixel); font-size: 0.55rem;
-    text-transform: uppercase; margin-bottom: 8px; line-height: 2;
+    font-family: var(--font-body); font-size: 1rem; font-weight: 600;
+    text-transform: uppercase; margin-bottom: 8px; line-height: 1.8;
     color: var(--text-secondary);
   }
   .empty-state-sub { font-size: 0.8rem; color: var(--text-muted); }
@@ -802,8 +799,8 @@ _SHARED_STYLES = """
   }
   .session-ended .material-icons-round { font-size: 48px; color: var(--error); margin-bottom: 16px; }
   .session-ended h2 {
-    font-family: var(--font-pixel); font-size: 0.7rem;
-    margin-bottom: 16px; color: var(--error); line-height: 2;
+    font-family: var(--font-body); font-size: 1.2rem; font-weight: 600;
+    margin-bottom: 16px; color: var(--error); line-height: 1.8;
   }
   .session-ended p { color: var(--text-secondary); margin-bottom: 8px; font-size: 0.85rem; }
   .session-ended .sub { color: var(--text-muted); font-size: 0.75rem; }
@@ -844,10 +841,10 @@ _SHARED_STYLES = """
 
   /* ── Back Link ── */
   .back-link {
-    font-family: var(--font-pixel); font-size: 0.45rem;
+    font-family: var(--font-body); font-size: 0.85rem; font-weight: 600;
     color: var(--text-muted); text-transform: uppercase;
-    letter-spacing: 0.06em; margin-bottom: 24px; display: inline-block;
-    transition: color var(--transition); line-height: 2;
+    letter-spacing: 0.04em; margin-bottom: 24px; display: inline-block;
+    transition: color var(--transition); line-height: 1.8;
   }
   .back-link:hover { color: var(--text-bright); }
 
@@ -905,6 +902,60 @@ function showToast(message, type = 'success') {
   container.appendChild(toast);
   setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(10px)'; toast.style.transition = '0.3s ease'; setTimeout(() => toast.remove(), 300); }, 3500);
 }
+
+const FileDownloadService = {
+  async download(url, suggestedName) {
+    try {
+      showToast('Preparing download...', 'info');
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Download failed');
+      
+      let filename = suggestedName;
+      const disposition = res.headers.get('Content-Disposition');
+      if (disposition && disposition.indexOf('filename=') !== -1) {
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) filename = match[1];
+      }
+
+      const blob = await res.blob();
+      
+      if (window.showSaveFilePicker) {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: filename
+          });
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          showToast('File saved successfully', 'success');
+          return;
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            showToast('Unable to save the file. Please try again.', 'error');
+          } else {
+            showToast('Save cancelled', 'info');
+          }
+          return;
+        }
+      }
+      
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(objectUrl);
+      }, 1000);
+      showToast('File saved successfully', 'success');
+    } catch (e) {
+      showToast('Unable to save the file. Please try again.', 'error');
+    }
+  }
+};
 </script>
 """
 
@@ -933,28 +984,53 @@ _WELCOME_PAGE = """<!DOCTYPE html>
     }
     .hero-brand {
       font-family: "Times New Roman", Times, serif;
-      font-size: 30pt;
-      line-height: 1.4;
+      font-size: clamp(36pt, 6vw, 42pt);
+      font-weight: bold;
+      line-height: 1.2;
+      margin-bottom: 4px;
+      color: #ffffff;
+      text-align: center;
+    }
+    .hero-subbrand {
+      font-family: "Times New Roman", Times, serif;
+      font-size: clamp(30pt, 5vw, 36pt);
+      font-weight: bold;
+      line-height: 1.2;
       margin-bottom: 32px;
       color: #ffffff;
+      text-align: center;
     }
     .features-list {
       font-family: "Times New Roman", Times, serif;
-      font-size: 24pt;
+      font-size: clamp(16pt, 3vw, 24pt);
       color: #ffffff;
       margin-bottom: 48px;
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: center;
       gap: 12px;
       text-align: center;
     }
+    .features-list span {
+      white-space: nowrap;
+    }
+    .features-list .bullet {
+      margin: 0 8px;
+    }
     .hero-quote {
       font-family: "Times New Roman", Times, serif;
-      font-size: 24pt;
+      font-size: clamp(16pt, 3vw, 24pt);
       color: #ffffff;
       margin-bottom: 48px;
       font-style: italic;
       text-align: center;
+    }
+    .hero-quote-author {
+      display: block;
+      margin-top: 12px;
+      font-style: normal;
+      font-size: clamp(14pt, 2.5vw, 20pt);
     }
     .hero-cta {
       padding: 18px 48px; font-size: 0.6rem;
@@ -964,17 +1040,19 @@ _WELCOME_PAGE = """<!DOCTYPE html>
 <body>
   <main class="hero">
     <div class="content-wrapper animate-in">
-      <h1 class="hero-brand">Mobile2PC Secured Crypto AnyFile Share</h1>
+      <div class="hero-brand">Mobile2PC</div>
+      <div class="hero-subbrand">Secured Crypto AnyFile Share</div>
 
       <div class="features-list">
-        <span>Encrypted Transfer</span>
-        <span>QR Session</span>
-        <span>Any File Type</span>
+        <span>Encrypted Transfer</span><span class="bullet">&bull;</span>
+        <span>QR Session</span><span class="bullet">&bull;</span>
+        <span>Any File Type</span><span class="bullet">&bull;</span>
         <span>Cross Platform</span>
       </div>
 
       <div class="hero-quote">
         "Simplicity is prerequisite for reliability."
+        <span class="hero-quote-author">&mdash; Edsger W. Dijkstra</span>
       </div>
 
       <a href="/dashboard" class="btn btn-primary hero-cta">
@@ -1705,6 +1783,12 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
             document.getElementById('countdown').textContent = '[' + m + ':' + s + ']';
           }
 
+          if (data.waiting === false && (!data.files || data.files.length === 0)) {
+            document.getElementById('statusBadge').innerHTML =
+              '<span class="status-dot active"></span> CONNECTION ESTABLISHED <span id="countdown"></span>';
+            document.getElementById('emptyState').querySelector('.empty-state-title').textContent = 'READY TO RECEIVE FILES';
+          }
+
           if (data.files && data.files.length > 0) {
             document.getElementById('emptyState').style.display = 'none';
             const list = document.getElementById('fileList');
@@ -1723,7 +1807,7 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
                   actions += `<button class="btn btn-outline btn-sm" onclick="showPreview('audio', '/api/preview/${sessionId}/${encodeURIComponent(f.name)}')">PREVIEW</button>`;
                 }
                 const btnId = 'dlBtn-' + f.name.replace(/[^a-zA-Z0-9]/g, '');
-                actions += `<button id="${btnId}" class="btn btn-primary btn-sm" onclick="downloadFileViaBlob('${sessionId}', '${encodeURIComponent(f.name)}', '${encodeURIComponent(f.original_name)}')">DOWNLOAD</button>`;
+                actions += `<button id="${btnId}" class="btn btn-primary btn-sm" onclick="FileDownloadService.download('/api/download/${sessionId}/${encodeURIComponent(f.name)}', '${f.original_name.replace(/'/g, "\\'")}')">DOWNLOAD</button>`;
 
                 el.innerHTML = `
                   <div class="file-card-header">
@@ -1746,9 +1830,11 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
 
             if (data.files.length > 1) {
               const dlAllBtn = document.getElementById('downloadAllBtn');
-              dlAllBtn.href = '/api/download-all/' + sessionId;
               dlAllBtn.style.display = 'inline-flex';
-              dlAllBtn.setAttribute('download', 'mobile2pc_' + sessionId + '.zip');
+              dlAllBtn.onclick = function(e) {
+                e.preventDefault();
+                FileDownloadService.download('/api/download-all/' + sessionId, 'mobile2pc_' + sessionId + '.zip');
+              };
             }
           }
         } catch (e) {}
@@ -1778,42 +1864,6 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
       document.getElementById('modalAudio').src = '';
     }
 
-    async function downloadFileViaBlob(sid, encodedName, encodedOriginalName) {
-      const originalName = decodeURIComponent(encodedOriginalName);
-      const safeId = 'dlBtn-' + decodeURIComponent(encodedName).replace(/[^a-zA-Z0-9]/g, '');
-      const btn = document.getElementById(safeId);
-      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
-
-      try {
-        const res = await fetch(`/api/download/${sid}/${encodedName}`);
-        if (!res.ok) throw new Error('Download failed');
-        
-        let filename = originalName;
-        const disposition = res.headers.get('Content-Disposition');
-        if (disposition && disposition.indexOf('filename=') !== -1) {
-          const match = disposition.match(/filename="?([^"]+)"?/);
-          if (match && match[1]) filename = match[1];
-        }
-
-        const blob = await res.blob();
-        const objectUrl = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = objectUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(objectUrl);
-        }, 1000);
-        
-      } catch (e) {
-        showToast('Failed to download file', 'error');
-      } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = 'DOWNLOAD'; }
-      }
     }
 
     async function closeSession() {
@@ -2101,16 +2151,16 @@ _SESSION_PAGE = """<!DOCTYPE html>
   <style>
     .page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px; }
     .mobile-brand {
-      font-family: var(--font-pixel); font-size: 0.6rem;
+      font-family: var(--font-body); font-size: 1.2rem; font-weight: 600;
       text-align: center; margin-bottom: 4px; line-height: 2;
     }
     .mobile-brand-sub {
-      font-family: var(--font-pixel); font-size: 0.35rem;
+      font-family: var(--font-body); font-size: 0.75rem; font-weight: 600;
       color: var(--text-muted); text-align: center; margin-bottom: 24px;
       text-transform: uppercase; letter-spacing: 0.06em; line-height: 2.2;
     }
     .mobile-status {
-      font-family: var(--font-pixel); font-size: 0.4rem;
+      font-family: var(--font-body); font-size: 0.85rem; font-weight: 600;
       color: var(--text-secondary); text-transform: uppercase;
       letter-spacing: 0.04em; margin-bottom: 20px; line-height: 2;
       text-align: center;
@@ -2163,8 +2213,8 @@ _SESSION_PAGE = """<!DOCTYPE html>
 
   <div class="modal-overlay" id="downloadModal" onclick="closeDownloadModal()">
     <div class="modal-content" style="background: var(--bg-surface); padding: 24px; border: 1px solid var(--border-color); min-width: 280px;" onclick="event.stopPropagation()">
-      <h2 style="font-family: var(--font-pixel); font-size: 0.6rem; color: var(--text-bright); margin-bottom: 24px; text-align: center; line-height: 2;">DOWNLOAD FILE</h2>
-      <a id="downloadDeviceBtn" href="#" class="btn btn-primary" style="width: 100%; margin-bottom: 12px; font-weight: 500;" download onclick="closeDownloadModal()">
+      <h2 style="font-family: var(--font-body); font-size: 1.1rem; font-weight: 600; color: var(--text-bright); margin-bottom: 24px; text-align: center; line-height: 2;">DOWNLOAD FILE</h2>
+      <a id="downloadDeviceBtn" href="#" class="btn btn-primary" style="width: 100%; margin-bottom: 12px; font-weight: 500;">
         <span class="material-icons-round">smartphone</span> SAVE TO DEVICE
       </a>
       <button class="btn btn-outline" style="width: 100%; margin-bottom: 12px; color: var(--text-bright);" onclick="alert('Google Drive integration is not currently configured. This will be implemented in a future update.');">
@@ -2185,8 +2235,11 @@ _SESSION_PAGE = """<!DOCTYPE html>
     function showDownloadModal(encodedName, encodedOriginalName) {
       const modal = document.getElementById('downloadModal');
       const deviceBtn = document.getElementById('downloadDeviceBtn');
-      deviceBtn.href = '/api/download/' + SESSION_ID + '/' + encodedName;
-      deviceBtn.setAttribute('download', decodeURIComponent(encodedOriginalName));
+      deviceBtn.onclick = function(e) {
+        e.preventDefault();
+        FileDownloadService.download('/api/download/' + SESSION_ID + '/' + encodedName, decodeURIComponent(encodedOriginalName));
+        closeDownloadModal();
+      };
       modal.classList.add('active');
     }
 
@@ -2289,9 +2342,11 @@ _SESSION_PAGE = """<!DOCTYPE html>
 
           if (data.files.length > 1) {
             const dlAllBtn = document.getElementById('downloadAllBtn');
-            dlAllBtn.href = '/api/download-all/' + SESSION_ID;
             dlAllBtn.style.display = 'inline-flex';
-            dlAllBtn.setAttribute('download', 'mobile2pc_' + SESSION_ID + '.zip');
+            dlAllBtn.onclick = function(e) {
+              e.preventDefault();
+              FileDownloadService.download('/api/download-all/' + SESSION_ID, 'mobile2pc_' + SESSION_ID + '.zip');
+            };
           }
         }
       } catch(e){}
@@ -2326,6 +2381,8 @@ async def page_receive():
 @app.get("/send-to/{session_id}", response_class=HTMLResponse)
 async def page_send_to(session_id: str):
     sid = session_id.upper().strip()
+    if sid in sessions and sessions[sid].get("mode") == "receive":
+        sessions[sid]["waiting"] = False
     return _SEND_TO_PAGE.replace("{{SESSION_ID}}", sid)
 
 
