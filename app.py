@@ -483,17 +483,17 @@ _SHARED_STYLES = """
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg-primary: #000000;
-    --bg-surface: #080808;
-    --bg-surface-2: #0d0d0d;
-    --bg-surface-hover: #111111;
-    --border-color: #1a1a1a;
+    --bg-surface: rgba(255, 255, 255, 0.04);
+    --bg-surface-2: rgba(255, 255, 255, 0.06);
+    --bg-surface-hover: rgba(255, 255, 255, 0.08);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --border-light: rgba(255, 255, 255, 0.15);
     --border-light: #2a2a2a;
     --border-bright: #444444;
 
-    --text-primary: #d0d0d0;
-    --text-secondary: #808080;
-    --text-muted: #505050;
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.85);
+    --text-muted: rgba(255, 255, 255, 0.65);
     --text-bright: #ffffff;
 
     --accent: #ffffff;
@@ -555,19 +555,9 @@ _SHARED_STYLES = """
 
   .container { max-width: 680px; margin: 0 auto; padding: 0 20px; }
 
-  /* Chrome / Metallic text effect */
+  /* Pure white text globally */
   .text-chrome {
-    background: linear-gradient(180deg,
-      #ffffff 0%,
-      #d4d4d4 25%,
-      #999999 50%,
-      #cccccc 75%,
-      #ffffff 100%
-    );
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    color: #fff;
+    color: #ffffff;
   }
 
   /* ── Typography ── */
@@ -664,7 +654,11 @@ _SHARED_STYLES = """
   /* ── Inputs ── */
   .input-field {
     padding: 12px 14px;
-    background: var(--bg-primary); border: 1px solid var(--border-color);
+    margin-bottom: 24px;
+    background: var(--bg-surface); border: 1px solid var(--border-color);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 12px;
     color: var(--text-bright); font-family: var(--font-mono); font-size: 0.9rem;
     transition: all var(--transition); outline: none; width: 100%;
   }
@@ -683,10 +677,14 @@ _SHARED_STYLES = """
 
   /* ── Drop Zone ── */
   .drop-zone {
-    width: 100%; border: 2px dashed var(--border-light);
+    width: 100%;
+    border: 2px dashed var(--border-light); border-radius: 12px;
     padding: 48px 24px; text-align: center; cursor: pointer;
     background: var(--bg-surface); transition: all var(--transition);
     position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
   .drop-zone::before {
     content: ''; position: absolute; top: 0; left: 0; right: 0;
@@ -708,7 +706,10 @@ _SHARED_STYLES = """
   .file-item {
     display: flex; align-items: center; gap: 12px;
     padding: 12px 14px; background: var(--bg-surface);
-    border: 1px solid var(--border-color); border-top: none;
+    border: 1px solid var(--border-color); border-radius: 8px;
+    margin-bottom: 8px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     font-family: var(--font-mono); font-size: 0.8rem;
     transition: background var(--transition);
   }
@@ -753,7 +754,8 @@ _SHARED_STYLES = """
   .qr-panel { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-bottom: 24px; }
   .qr-frame {
     background: #ffffff; padding: 16px;
-    border: 3px solid var(--text-bright);
+    border-radius: 8px; margin-bottom: 16px;
+    display: inline-block;
     box-shadow: 0 0 40px rgba(255,255,255,0.06);
     position: relative;
   }
@@ -829,7 +831,12 @@ _SHARED_STYLES = """
   }
   .modal-overlay.active { display: flex; }
   .modal-content {
-    max-width: 95vw; max-height: 95vh; display: flex; flex-direction: column;
+    background: var(--bg-surface); border: 1px solid var(--border-light);
+    padding: 24px; border-radius: 12px; text-align: center; max-width: 90%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    display: flex; flex-direction: column;
     align-items: center; gap: 16px;
   }
   .modal-content img { max-width: 100%; max-height: 80vh; object-fit: contain; border: 1px solid var(--border-color); }
@@ -949,22 +956,43 @@ const FileDownloadService = {
           }
           return;
         }
+      } else {
+        // Fallback for browsers that don't support showSaveFilePicker
+        this.saveLocally(url, filename);
       }
+    } catch (e) {
+      showToast(e.message || 'Download failed', 'error');
+    }
+  },
+  
+  async saveLocally(url, suggestedName) {
+    try {
+      showToast('Starting download...', 'info');
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Download failed');
       
+      let filename = suggestedName;
+      const disposition = res.headers.get('Content-Disposition');
+      if (disposition && disposition.indexOf('filename=') !== -1) {
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) filename = match[1];
+      }
+
+      const blob = await res.blob();
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = objectUrl;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
-      
       setTimeout(() => {
         document.body.removeChild(a);
         URL.revokeObjectURL(objectUrl);
-      }, 1000);
-      showToast('File saved successfully', 'success');
+      }, 100);
+      showToast('Download complete', 'success');
     } catch (e) {
-      showToast('Unable to save the file. Please try again.', 'error');
+      showToast(e.message || 'Download failed', 'error');
     }
   }
 };
@@ -1117,9 +1145,12 @@ _DASHBOARD_PAGE = """<!DOCTYPE html>
 
     .action-card {
       display: flex; flex-direction: column; align-items: flex-start;
-      padding: 36px; text-decoration: none; color: var(--text-primary);
-      border: 1px solid var(--border-color); background: var(--bg-surface);
-      border-radius: 8px;
+      padding: 24px; border-radius: 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      text-decoration: none; color: var(--text-primary);
       box-shadow: 0 4px 12px rgba(0,0,0,0.5);
       transition: all var(--transition); position: relative; overflow: hidden;
     }
@@ -1880,7 +1911,7 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
               dlAllBtn.style.display = 'inline-flex';
               dlAllBtn.onclick = function(e) {
                 e.preventDefault();
-                FileDownloadService.download('/api/download-all/' + sessionId, 'mobile2pc_' + sessionId + '.zip');
+                FileDownloadService.saveLocally('/api/download-all/' + sessionId, 'mobile2pc_' + sessionId + '.zip');
               };
             }
           }
@@ -2259,9 +2290,12 @@ _SESSION_PAGE = """<!DOCTYPE html>
   </div>
 
   <div class="modal-overlay" id="downloadModal" onclick="closeDownloadModal()">
-    <div class="modal-content" style="background: var(--bg-surface); padding: 24px; border: 1px solid var(--border-color); min-width: 280px;" onclick="event.stopPropagation()">
+    <div class="modal-content" style="background: var(--bg-surface); padding: 24px; border: 1px solid var(--border-color); min-width: 280px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);" onclick="event.stopPropagation()">
       <h2 style="font-family: var(--font-body); font-size: 1.1rem; font-weight: 600; color: var(--text-bright); margin-bottom: 24px; text-align: center; line-height: 2;">DOWNLOAD FILE</h2>
-      <a id="downloadDeviceBtn" href="#" class="btn btn-primary" style="width: 100%; margin-bottom: 12px; font-weight: 500;">
+      <a id="downloadLocallyBtn" href="#" class="btn btn-primary" style="width: 100%; margin-bottom: 12px; font-weight: 500;">
+        <span class="material-icons-round">download</span> SAVE LOCALLY
+      </a>
+      <a id="downloadDeviceBtn" href="#" class="btn btn-outline" style="width: 100%; margin-bottom: 12px; font-weight: 500;">
         <span class="material-icons-round">smartphone</span> SAVE TO DEVICE
       </a>
       <button class="btn btn-outline" style="width: 100%; margin-bottom: 12px; color: var(--text-bright);" onclick="alert('Google Drive integration is not currently configured. This will be implemented in a future update.');">
@@ -2281,7 +2315,15 @@ _SESSION_PAGE = """<!DOCTYPE html>
 
     function showDownloadModal(encodedName, encodedOriginalName) {
       const modal = document.getElementById('downloadModal');
+      const locallyBtn = document.getElementById('downloadLocallyBtn');
       const deviceBtn = document.getElementById('downloadDeviceBtn');
+      
+      locallyBtn.onclick = function(e) {
+        e.preventDefault();
+        FileDownloadService.saveLocally('/api/download/' + SESSION_ID + '/' + encodedName, decodeURIComponent(encodedOriginalName));
+        closeDownloadModal();
+      };
+      
       deviceBtn.onclick = function(e) {
         e.preventDefault();
         FileDownloadService.download('/api/download/' + SESSION_ID + '/' + encodedName, decodeURIComponent(encodedOriginalName));
@@ -2392,7 +2434,7 @@ _SESSION_PAGE = """<!DOCTYPE html>
             dlAllBtn.style.display = 'inline-flex';
             dlAllBtn.onclick = function(e) {
               e.preventDefault();
-              FileDownloadService.download('/api/download-all/' + SESSION_ID, 'mobile2pc_' + SESSION_ID + '.zip');
+              FileDownloadService.saveLocally('/api/download-all/' + SESSION_ID, 'mobile2pc_' + SESSION_ID + '.zip');
             };
           }
         }
