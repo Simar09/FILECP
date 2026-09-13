@@ -1708,25 +1708,27 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
     </div>
 
     <div class="content">
-      <!-- Setup -->
-      <div class="card setup-card animate-in" id="setupCard">
-        <div class="section-label">SESSION DURATION</div>
-        <div class="duration-row">
-          <input type="number" id="durationValue" class="input-field" value="30" min="1" max="60">
-          <select id="durationUnit" class="input-field">
-            <option value="minutes">MINUTES</option>
-            <option value="hours">HOURS</option>
-          </select>
+      <!-- STATE: SESSION CONFIG -->
+      <div class="state-panel" id="stateSessionConfig">
+        <div class="card setup-card animate-in">
+          <div class="section-label">SESSION DURATION</div>
+          <div class="duration-row">
+            <input type="number" id="durationValue" class="input-field" value="30" min="1" max="60">
+            <select id="durationUnit" class="input-field">
+              <option value="minutes">MINUTES</option>
+              <option value="hours">HOURS</option>
+            </select>
+          </div>
+          <div class="duration-error" id="durationError"></div>
+  
+          <button class="btn btn-primary" style="width:100%; margin-top: 24px;" id="genBtn" onclick="createSession()">
+            GENERATE QR CODE
+          </button>
         </div>
-        <div class="duration-error" id="durationError"></div>
-
-        <button class="btn btn-primary" style="width:100%; margin-top: 24px;" id="genBtn" onclick="createSession()">
-          GENERATE QR CODE
-        </button>
       </div>
 
-      <!-- Active Session -->
-      <div class="qr-section animate-in" id="qrSection">
+      <!-- STATE: QR ACTIVE -->
+      <div class="state-panel animate-in" id="stateQrActive" style="display:none">
         <div class="qr-panel">
           <div class="qr-frame">
             <img id="qrImage" src="" alt="QR Code">
@@ -1791,6 +1793,11 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
       return unit === 'hours' ? val * 60 : val;
     }
 
+    function showState(state) {
+      document.getElementById('stateSessionConfig').style.display = (state === 'SessionConfig') ? 'block' : 'none';
+      document.getElementById('stateQrActive').style.display = (state === 'QrActive') ? 'block' : 'none';
+    }
+
     async function createSession() {
       const minutes = validateDuration();
       if (minutes === null) return;
@@ -1808,30 +1815,10 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
         const data = await res.json();
         sessionId = data.session_id;
 
-        document.getElementById('setupCard').style.display = 'none';
-        
-        const qrImage = document.getElementById('qrImage');
-        const qrSection = document.getElementById('qrSection');
-        
-        qrSection.style.display = 'flex';
-        qrImage.style.display = 'none';
-        
-        // Show a loading text or spinner here if desired, using a separate element
-        
-        qrImage.onload = () => {
-          qrImage.style.display = 'block';
-          startPolling();
-        };
-        
-        qrImage.onerror = () => {
-          showToast('Failed to load QR image', 'error');
-          btn.disabled = false;
-          btn.textContent = 'GENERATE QR CODE';
-          document.getElementById('setupCard').style.display = 'block';
-          qrSection.style.display = 'none';
-        };
-
-        qrImage.src = '/api/receive-qr/' + sessionId;
+        document.getElementById('qrImage').src = '/api/receive-qr/' + sessionId;
+        showState('QrActive');
+        startPolling();
+        showToast('Receive session created - QR code ready');
 
       } catch (e) {
         showToast('Failed to create session', 'error');
