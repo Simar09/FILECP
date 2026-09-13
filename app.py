@@ -932,68 +932,54 @@ _WELCOME_PAGE = """<!DOCTYPE html>
       max-width: 700px;
     }
     .hero-brand {
-      font-family: var(--font-pixel);
-      font-size: clamp(1.4rem, 4.5vw, 2.8rem);
-      line-height: 1.8;
-      margin-bottom: 8px;
-      letter-spacing: 0.02em;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 30pt;
+      line-height: 1.4;
+      margin-bottom: 32px;
+      color: #ffffff;
     }
-    .hero-sub {
-      font-family: var(--font-pixel);
-      font-size: clamp(0.4rem, 1.2vw, 0.6rem);
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      line-height: 2.4;
+    .features-list {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 24pt;
+      color: #ffffff;
       margin-bottom: 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      text-align: center;
     }
-    .features-line {
-      font-family: var(--font-pixel); font-size: 0.4rem;
-      color: var(--text-muted);
-      margin-bottom: 48px; display: flex; flex-wrap: wrap;
-      justify-content: center; gap: 16px;
-      text-transform: uppercase; letter-spacing: 0.04em;
-      line-height: 2;
-    }
-    .features-line span {
-      padding: 6px 12px; border: 1px solid var(--border-color);
-      background: var(--bg-surface);
+    .hero-quote {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 24pt;
+      color: #ffffff;
+      margin-bottom: 48px;
+      font-style: italic;
+      text-align: center;
     }
     .hero-cta {
       padding: 18px 48px; font-size: 0.6rem;
-    }
-    .hero-footer {
-      margin-top: 64px; font-size: 0.75rem; color: var(--text-muted);
-      font-style: italic;
-    }
-    .hero-footer-author {
-      font-family: var(--font-pixel); font-size: 0.4rem;
-      color: var(--text-muted); margin-top: 8px; letter-spacing: 0.06em;
-      line-height: 2; font-style: normal;
     }
   </style>
 </head>
 <body>
   <main class="hero">
     <div class="content-wrapper animate-in">
-      <h1 class="hero-brand text-chrome">MOBILE2PC</h1>
-      <div class="hero-sub">Secured Crypto AnyFile Share</div>
+      <h1 class="hero-brand">Mobile2PC Secured Crypto AnyFile Share</h1>
 
-      <div class="features-line">
-        <span>ENCRYPTED TRANSFER</span>
-        <span>QR SESSION</span>
-        <span>ANY FILE TYPE</span>
-        <span>CROSS-PLATFORM</span>
+      <div class="features-list">
+        <span>Encrypted Transfer</span>
+        <span>QR Session</span>
+        <span>Any File Type</span>
+        <span>Cross Platform</span>
+      </div>
+
+      <div class="hero-quote">
+        "Simplicity is prerequisite for reliability."
       </div>
 
       <a href="/dashboard" class="btn btn-primary hero-cta">
         GET STARTED
       </a>
-
-      <div class="hero-footer">
-        "Simplicity is prerequisite for reliability."
-        <div class="hero-footer-author">— EDSGER W. DIJKSTRA</div>
-      </div>
     </div>
   </main>
 </body>
@@ -1625,6 +1611,10 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
 
         <div class="received-files" id="fileList"></div>
 
+        <a id="downloadAllBtn" class="btn btn-outline" style="display:none; width: 100%; margin-top: 16px;" href="#">
+          <span class="material-icons-round">download</span> DOWNLOAD ALL (ZIP)
+        </a>
+
         <button class="btn btn-danger" style="width: 100%; margin-top: 24px;" onclick="closeSession()" id="closeBtn">
           CLOSE SESSION
         </button>
@@ -1636,6 +1626,7 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
     <div class="modal-content" onclick="event.stopPropagation()">
       <img id="modalImage" src="" alt="Preview" style="display:none">
       <video id="modalVideo" controls style="display:none"></video>
+      <audio id="modalAudio" controls style="display:none; width:100%; max-width:400px;"></audio>
       <button class="btn btn-outline btn-sm" onclick="closeModal()">CLOSE PREVIEW</button>
     </div>
   </div>
@@ -1728,8 +1719,11 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
                   actions += `<button class="btn btn-outline btn-sm" onclick="showPreview('image', '/api/preview/${sessionId}/${encodeURIComponent(f.name)}')">PREVIEW</button>`;
                 } else if (f.is_video) {
                   actions += `<button class="btn btn-outline btn-sm" onclick="showPreview('video', '/api/preview/${sessionId}/${encodeURIComponent(f.name)}')">PREVIEW</button>`;
+                } else if (f.is_audio) {
+                  actions += `<button class="btn btn-outline btn-sm" onclick="showPreview('audio', '/api/preview/${sessionId}/${encodeURIComponent(f.name)}')">PREVIEW</button>`;
                 }
-                actions += `<a href="/api/download/${sessionId}/${encodeURIComponent(f.name)}" class="btn btn-primary btn-sm" download="${f.original_name}">DOWNLOAD</a>`;
+                const btnId = 'dlBtn-' + f.name.replace(/[^a-zA-Z0-9]/g, '');
+                actions += `<button id="${btnId}" class="btn btn-primary btn-sm" onclick="downloadFileViaBlob('${sessionId}', '${encodeURIComponent(f.name)}', '${encodeURIComponent(f.original_name)}')">DOWNLOAD</button>`;
 
                 el.innerHTML = `
                   <div class="file-card-header">
@@ -1749,6 +1743,13 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
             });
             document.getElementById('statusBadge').innerHTML =
               '<span class="status-dot active"></span> CONNECTION ACTIVE <span id="countdown"></span>';
+
+            if (data.files.length > 1) {
+              const dlAllBtn = document.getElementById('downloadAllBtn');
+              dlAllBtn.href = '/api/download-all/' + sessionId;
+              dlAllBtn.style.display = 'inline-flex';
+              dlAllBtn.setAttribute('download', 'mobile2pc_' + sessionId + '.zip');
+            }
           }
         } catch (e) {}
       }, 2000);
@@ -1758,10 +1759,13 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
       const modal = document.getElementById('previewModal');
       const img = document.getElementById('modalImage');
       const vid = document.getElementById('modalVideo');
+      const aud = document.getElementById('modalAudio');
       img.style.display = 'none';
       vid.style.display = 'none';
+      aud.style.display = 'none';
       if (type === 'image') { img.src = url; img.style.display = 'block'; }
       else if (type === 'video') { vid.src = url; vid.style.display = 'block'; }
+      else if (type === 'audio') { aud.src = url; aud.style.display = 'block'; }
       modal.classList.add('active');
     }
 
@@ -1770,6 +1774,46 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
       modal.classList.remove('active');
       document.getElementById('modalVideo').pause();
       document.getElementById('modalVideo').src = '';
+      document.getElementById('modalAudio').pause();
+      document.getElementById('modalAudio').src = '';
+    }
+
+    async function downloadFileViaBlob(sid, encodedName, encodedOriginalName) {
+      const originalName = decodeURIComponent(encodedOriginalName);
+      const safeId = 'dlBtn-' + decodeURIComponent(encodedName).replace(/[^a-zA-Z0-9]/g, '');
+      const btn = document.getElementById(safeId);
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+
+      try {
+        const res = await fetch(`/api/download/${sid}/${encodedName}`);
+        if (!res.ok) throw new Error('Download failed');
+        
+        let filename = originalName;
+        const disposition = res.headers.get('Content-Disposition');
+        if (disposition && disposition.indexOf('filename=') !== -1) {
+          const match = disposition.match(/filename="?([^"]+)"?/);
+          if (match && match[1]) filename = match[1];
+        }
+
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(objectUrl);
+        }, 1000);
+        
+      } catch (e) {
+        showToast('Failed to download file', 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = 'DOWNLOAD'; }
+      }
     }
 
     async function closeSession() {
@@ -2117,11 +2161,38 @@ _SESSION_PAGE = """<!DOCTYPE html>
     </div>
   </div>
 
+  <div class="modal-overlay" id="downloadModal" onclick="closeDownloadModal()">
+    <div class="modal-content" style="background: var(--bg-surface); padding: 24px; border: 1px solid var(--border-color); min-width: 280px;" onclick="event.stopPropagation()">
+      <h2 style="font-family: var(--font-pixel); font-size: 0.6rem; color: var(--text-bright); margin-bottom: 24px; text-align: center; line-height: 2;">DOWNLOAD FILE</h2>
+      <a id="downloadDeviceBtn" href="#" class="btn btn-primary" style="width: 100%; margin-bottom: 12px; font-weight: 500;" download onclick="closeDownloadModal()">
+        <span class="material-icons-round">smartphone</span> SAVE TO DEVICE
+      </a>
+      <button class="btn btn-outline" style="width: 100%; margin-bottom: 12px; color: var(--text-bright);" onclick="alert('Google Drive integration is not currently configured. This will be implemented in a future update.');">
+        <span class="material-icons-round">cloud_upload</span> SAVE TO GOOGLE DRIVE
+      </button>
+      <button class="btn btn-danger" style="width: 100%;" onclick="closeDownloadModal()">
+        CANCEL
+      </button>
+    </div>
+  </div>
+
   """ + _TOAST_JS + """
   <script>
     const SESSION_ID = window.location.pathname.split('/').pop().toUpperCase();
     let knownFiles = new Set();
     let sessionEnded = false;
+
+    function showDownloadModal(encodedName, encodedOriginalName) {
+      const modal = document.getElementById('downloadModal');
+      const deviceBtn = document.getElementById('downloadDeviceBtn');
+      deviceBtn.href = '/api/download/' + SESSION_ID + '/' + encodedName;
+      deviceBtn.setAttribute('download', decodeURIComponent(encodedOriginalName));
+      modal.classList.add('active');
+    }
+
+    function closeDownloadModal() {
+      document.getElementById('downloadModal').classList.remove('active');
+    }
 
     function showPreview(type, url) {
       const modal = document.getElementById('previewModal');
@@ -2197,7 +2268,7 @@ _SESSION_PAGE = """<!DOCTYPE html>
               } else if (f.is_audio) {
                 actions += `<button class="btn btn-outline btn-sm" onclick="showPreview('audio', '/api/preview/${SESSION_ID}/${encodeURIComponent(f.name)}')">PREVIEW</button>`;
               }
-              actions += `<a href="/api/download/${SESSION_ID}/${encodeURIComponent(f.name)}" class="btn btn-primary btn-sm" download="${f.original_name}">DOWNLOAD</a>`;
+              actions += `<button class="btn btn-primary btn-sm" onclick="showDownloadModal('${encodeURIComponent(f.name)}', '${encodeURIComponent(f.original_name)}')">DOWNLOAD</button>`;
 
               el.innerHTML = `
                 <div class="file-card-header">
