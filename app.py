@@ -513,8 +513,15 @@ _SHARED_STYLES = """
 
   html { scroll-behavior: smooth; }
   body {
-    font-family: var(--font-mono);
-    background-color: var(--bg-primary);
+    font-family: var(--font-body);
+    background-color: #050505;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(138, 43, 226, 0.18), transparent 45%),
+      radial-gradient(circle at 85% 25%, rgba(0, 255, 255, 0.15), transparent 45%),
+      radial-gradient(circle at 30% 80%, rgba(255, 215, 0, 0.12), transparent 40%),
+      radial-gradient(circle at 75% 75%, rgba(0, 255, 128, 0.12), transparent 45%),
+      radial-gradient(circle at 50% 50%, rgba(0, 102, 255, 0.15), transparent 50%);
+    background-attachment: fixed;
     color: var(--text-primary);
     line-height: 1.6;
     min-height: 100vh;
@@ -533,15 +540,7 @@ _SHARED_STYLES = """
     background-size: 24px 24px;
   }
 
-  /* Glossy ambient glow */
-  body::after {
-    content: '';
-    position: fixed; inset: 0;
-    pointer-events: none; z-index: -2;
-    background: 
-      radial-gradient(circle at 15% 30%, rgba(120, 0, 255, 0.08) 0%, transparent 40%),
-      radial-gradient(circle at 85% 70%, rgba(255, 200, 0, 0.06) 0%, transparent 40%);
-  }
+
 
   a { color: var(--text-primary); text-decoration: none; transition: color var(--transition); }
   a:hover { color: var(--text-bright); }
@@ -596,27 +595,40 @@ _SHARED_STYLES = """
   /* ── Buttons ── */
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 14px 24px; border-radius: var(--radius);
+    padding: 14px 24px; border-radius: 8px; /* Rounded corners */
     font-family: var(--font-body); font-size: 0.9rem; font-weight: 600;
-    cursor: pointer; border: 1px solid var(--border-light);
-    transition: all var(--transition);
-    text-decoration: none; white-space: nowrap; text-transform: uppercase;
-    background: var(--bg-surface); color: var(--text-primary);
-    letter-spacing: 0.02em; line-height: 1.6;
+    cursor: pointer; transition: all var(--transition);
+    border: 1px solid rgba(255, 255, 255, 0.1); 
+    text-transform: uppercase; letter-spacing: 0.05em;
+    background: rgba(255, 255, 255, 0.03); /* Glass-like surface */
+    color: var(--text-bright);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    text-decoration: none; white-space: nowrap;
+    line-height: 1.6;
   }
-  .btn:hover { border-color: var(--border-bright); background: var(--bg-surface-hover); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+  .btn:hover { 
+    border-color: rgba(255, 255, 255, 0.3); 
+    background: rgba(255, 255, 255, 0.08); 
+    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.1);
+  }
 
   .btn-primary {
-    background: var(--text-bright); color: var(--bg-primary); border-color: var(--text-bright);
-    font-weight: 400;
+    background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
   }
   .btn-primary:hover {
-    background: #e0e0e0; border-color: #e0e0e0;
-    box-shadow: 0 0 20px rgba(255,255,255,0.15), inset 0 1px 0 rgba(255,255,255,0.3);
+    background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%);
+    border-color: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.2);
   }
 
   .btn-outline {
-    background: transparent; color: var(--text-bright); border-color: var(--border-light);
+    background: rgba(255, 255, 255, 0.03); color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.15);
   }
   .btn-outline:hover {
     border-color: var(--text-bright); background: var(--accent-glow);
@@ -973,14 +985,7 @@ _WELCOME_PAGE = """<!DOCTYPE html>
   """ + _SHARED_STYLES + """
   <style>
     body {
-      background-color: #050505;
-      background-image:
-        radial-gradient(circle at 15% 20%, rgba(138, 43, 226, 0.18), transparent 45%),
-        radial-gradient(circle at 85% 25%, rgba(0, 255, 255, 0.15), transparent 45%),
-        radial-gradient(circle at 30% 80%, rgba(255, 215, 0, 0.12), transparent 40%),
-        radial-gradient(circle at 75% 75%, rgba(0, 255, 128, 0.12), transparent 45%),
-        radial-gradient(circle at 50% 50%, rgba(0, 102, 255, 0.15), transparent 50%);
-      background-attachment: fixed;
+      /* Uses global shared background */
     }
     .hero {
       min-height: 100vh; display: flex; flex-direction: column;
@@ -1093,22 +1098,18 @@ _DASHBOARD_PAGE = """<!DOCTYPE html>
   <title>Dashboard — MOBILE2PC</title>
   """ + _SHARED_STYLES + """
   <style>
-    body {
-      background-color: #ffffff;
-      color: #333333;
-    }
     .page {
       min-height: 100vh; display: flex; flex-direction: column;
       align-items: center; justify-content: center; padding: 40px 24px;
     }
     .page-brand {
       font-family: var(--font-body); font-size: 1.2rem; font-weight: 600;
-      color: #666666; text-transform: uppercase;
+      color: var(--text-muted); text-transform: uppercase;
       letter-spacing: 0.08em; margin-bottom: 8px; line-height: 2;
     }
     .page-title {
       font-family: var(--font-body); font-size: 1.5rem; font-weight: bold;
-      color: #1a1a1a; margin-bottom: 48px;
+      color: var(--text-bright); margin-bottom: 48px;
       text-transform: none; letter-spacing: normal; line-height: 1.5;
     }
     .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 740px; width: 100%; }
@@ -1116,30 +1117,31 @@ _DASHBOARD_PAGE = """<!DOCTYPE html>
 
     .action-card {
       display: flex; flex-direction: column; align-items: flex-start;
-      padding: 36px; text-decoration: none; color: #1a1a1a;
-      border: 1px solid #e0e0e0; background: #ffffff;
+      padding: 36px; text-decoration: none; color: var(--text-primary);
+      border: 1px solid var(--border-color); background: var(--bg-surface);
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
       transition: all var(--transition); position: relative; overflow: hidden;
     }
     .action-card:hover {
-      border-color: #000000;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      border-color: var(--border-light); background: var(--bg-surface-hover);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.8);
       transform: translateY(-2px);
     }
 
-    .action-icon { font-size: 32px; color: #1a1a1a; margin-bottom: 20px; }
+    .action-icon { font-size: 32px; color: var(--text-bright); margin-bottom: 20px; }
     .action-card h2 {
       font-family: var(--font-body); font-size: 1.4rem; font-weight: 600;
+      color: var(--text-bright);
       text-transform: none; margin-bottom: 16px; letter-spacing: normal;
       line-height: 1.2;
     }
     .action-features {
       list-style: none; display: flex; flex-direction: column; gap: 10px;
-      font-size: 0.95rem; color: #555555; font-family: var(--font-body);
+      font-size: 0.95rem; color: var(--text-secondary); font-family: var(--font-body);
     }
     .action-features li { display: flex; align-items: center; gap: 8px; }
-    .action-features li .material-icons-round { font-size: 16px; color: #888888; }
+    .action-features li .material-icons-round { font-size: 16px; color: var(--text-muted); }
   </style>
 </head>
 <body>
@@ -1181,10 +1183,9 @@ _SEND_PAGE = """<!DOCTYPE html>
   <title>Send File — MOBILE2PC</title>
   """ + _SHARED_STYLES + """
   <style>
-    body { background-color: #ffffff; color: #333333; }
     .page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 32px 20px; }
     .header { text-align: center; margin-bottom: 28px; width: 100%; max-width: 620px; }
-    .header h1 { color: #1a1a1a; font-family: var(--font-body); font-weight: bold; }
+    .header h1 { color: var(--text-bright); font-family: var(--font-body); font-weight: bold; }
     .state-panel { width: 100%; max-width: 620px; }
     .sent-file-list { margin-bottom: 16px; }
     .add-more-section { margin-bottom: 16px; }
@@ -1656,11 +1657,10 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
   <title>Receive File — MOBILE2PC</title>
   """ + _SHARED_STYLES + """
   <style>
-    body { background-color: #ffffff; color: #333333; }
     .page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 32px 20px; }
     .header { text-align: center; margin-bottom: 28px; width: 100%; max-width: 620px; }
-    .header h1 { color: #1a1a1a; font-family: var(--font-body); font-weight: bold; }
-    .header p { color: #666666; font-family: var(--font-body); font-size: 0.85rem; font-weight: 600;
+    .header h1 { color: var(--text-bright); font-family: var(--font-body); font-weight: bold; }
+    .header p { color: var(--text-muted); font-family: var(--font-body); font-size: 0.85rem; font-weight: 600;
       text-transform: uppercase; letter-spacing: 0.06em; margin-top: 8px; line-height: 2; }
     .content { width: 100%; max-width: 620px; }
     .setup-card { border-top: 2px solid var(--text-bright); }
@@ -1937,17 +1937,17 @@ _SEND_TO_PAGE = """<!DOCTYPE html>
   <style>
     .page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px; }
     .mobile-brand {
-      font-family: var(--font-pixel); font-size: 0.6rem;
+      font-family: var(--font-body); font-size: 1.2rem; font-weight: 600;
       text-align: center; margin-bottom: 4px; line-height: 2;
     }
     .mobile-brand-sub {
-      font-family: var(--font-pixel); font-size: 0.35rem;
+      font-family: var(--font-body); font-size: 0.75rem; font-weight: 600;
       color: var(--text-muted); text-align: center; margin-bottom: 24px;
       text-transform: uppercase; letter-spacing: 0.06em; line-height: 2.2;
     }
     .mobile-status {
-      font-family: var(--font-pixel); font-size: 0.4rem;
-      color: var(--text-muted); text-transform: uppercase;
+      font-family: var(--font-body); font-size: 0.85rem; font-weight: 600;
+      color: var(--text-secondary); text-transform: uppercase;
       letter-spacing: 0.04em; margin-bottom: 20px; line-height: 2;
       text-align: center;
     }
