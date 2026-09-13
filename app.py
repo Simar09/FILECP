@@ -46,8 +46,8 @@ APP_VERSION = "2.0.0"
 HOST = "0.0.0.0"
 PORT = int(os.environ.get("PORT", 8000))
 RENDER_EXTERNAL_URL = os.environ.get("RENDER_EXTERNAL_URL", "")
-MAX_UPLOAD_SIZE = 2000 * 1024 * 1024  # 2 GB total per session
-MAX_SINGLE_FILE = 1000 * 1024 * 1024  # 1 GB per file
+MAX_UPLOAD_SIZE = 500 * 1024 * 1024   # 500 MB total per session
+MAX_SINGLE_FILE = 500 * 1024 * 1024   # 500 MB per file
 UPLOAD_DIR = Path(tempfile.gettempdir()) / "filecp_uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ENCRYPTION_KEY = Fernet.generate_key()
@@ -204,13 +204,13 @@ async def api_upload(
         if file_size > MAX_SINGLE_FILE:
             if not existing:
                 shutil.rmtree(session_dir, ignore_errors=True)
-            raise HTTPException(400, f"File '{safe_name}' exceeds 1 GB limit.")
+            raise HTTPException(400, f"File '{safe_name}' exceeds 500 MB limit.")
 
         total_size += file_size
         if (existing_total + total_size) > MAX_UPLOAD_SIZE:
             if not existing:
                 shutil.rmtree(session_dir, ignore_errors=True)
-            raise HTTPException(400, "Total upload size exceeds 2 GB limit.")
+            raise HTTPException(400, "Total upload size exceeds 500 MB limit.")
 
         encrypted = CIPHER.encrypt(content)
         file_path = session_dir / safe_name
@@ -397,8 +397,8 @@ async def api_download_all(session_id: str):
 
     buf.seek(0)
     s["download_count"] += 1
-    return StreamingResponse(
-        buf,
+    return Response(
+        content=buf.getvalue(),
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="mobile2pc_{sid}.zip"'},
     )
