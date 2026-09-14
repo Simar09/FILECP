@@ -29,6 +29,7 @@ from fastapi import (
     HTTPException,
     Request,
     UploadFile,
+    BackgroundTasks,
 )
 from fastapi.responses import (
     HTMLResponse,
@@ -210,7 +211,7 @@ async def api_upload(
         if (existing_total + total_size) > MAX_UPLOAD_SIZE:
             if not existing:
                 shutil.rmtree(session_dir, ignore_errors=True)
-            raise HTTPException(400, "Total upload size exceeds 500 MB limit.")
+            raise HTTPException(400, "File limit reached. No more files can be shared.")
 
         encrypted = CIPHER.encrypt(content)
         file_path = session_dir / safe_name
@@ -376,7 +377,7 @@ async def api_preview_file(session_id: str, filename: str):
 
 
 @app.get("/api/download-all/{session_id}")
-async def api_download_all(session_id: str):
+async def api_download_all(session_id: str, background_tasks: BackgroundTasks):
     sid = session_id.upper().strip()
     if sid not in sessions:
         raise HTTPException(404, "Session not found or expired.")
@@ -386,21 +387,34 @@ async def api_download_all(session_id: str):
     if time.time() > s["expires_at"]:
         raise HTTPException(410, "Session has expired.")
 
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for f in s["files"]:
-            file_path = UPLOAD_DIR / sid / f["name"]
-            if file_path.exists():
-                encrypted = file_path.read_bytes()
-                decrypted = CIPHER.decrypt(encrypted)
-                zf.writestr(f["original_name"], decrypted)
+    fd, temp_path = tempfile.mkstemp(suffix=".zip", prefix=f"mobile2pc_{sid}_")
+    os.close(fd)
 
-    buf.seek(0)
+    def build_zip():
+        with zipfile.ZipFile(temp_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for f in s["files"]:
+                file_path = UPLOAD_DIR / sid / f["name"]
+                if file_path.exists():
+                    encrypted = file_path.read_bytes()
+                    decrypted = CIPHER.decrypt(encrypted)
+                    zf.writestr(f["original_name"], decrypted)
+
+    build_zip()
+
     s["download_count"] += 1
-    return Response(
-        content=buf.getvalue(),
+    
+    def cleanup_temp_file(path: str):
+        try:
+            os.remove(path)
+        except Exception:
+            pass
+
+    background_tasks.add_task(cleanup_temp_file, temp_path)
+
+    return FileResponse(
+        path=temp_path,
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="mobile2pc_{sid}.zip"'},
+        filename=f"mobile2pc_{sid}.zip",
     )
 
 
@@ -920,6 +934,20 @@ function showToast(message, type = 'success') {
   toast.innerHTML = '<span class="material-icons-round" style="color:'+color+'; font-size:16px;">' + icon + '</span><span>' + message + '</span>';
   container.appendChild(toast);
   setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(10px)'; toast.style.transition = '0.3s ease'; setTimeout(() => toast.remove(), 300); }, 3500);
+}
+
+function toggleZoom(e, img) {
+  if (img.style.transform === 'scale(2)') {
+    img.style.transform = 'scale(1)';
+    img.style.cursor = 'zoom-in';
+  } else {
+    const rect = img.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    img.style.transformOrigin = `${x}% ${y}%`;
+    img.style.transform = 'scale(2)';
+    img.style.cursor = 'zoom-out';
+  }
 }
 
 const FileDownloadService = {
@@ -1762,7 +1790,7 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
 
   <div class="modal-overlay" id="previewModal" onclick="closeModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
-      <img id="modalImage" src="" alt="Preview" style="display:none">
+      <img id="modalImage" src="" alt="Preview" style="display:none; cursor: zoom-in; transition: transform 0.2s;" onclick="toggleZoom(event, this)">
       <video id="modalVideo" controls style="display:none"></video>
       <audio id="modalAudio" controls style="display:none; width:100%; max-width:400px;"></audio>
       <button class="btn btn-outline btn-sm" onclick="closeModal()">CLOSE PREVIEW</button>
@@ -1898,7 +1926,13 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
               dlAllBtn.style.display = 'inline-flex';
               dlAllBtn.onclick = function(e) {
                 e.preventDefault();
-                FileDownloadService.saveLocally('/api/download-all/' + sessionId, 'mobile2pc_' + sessionId + '.zip');
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = '/api/download-all/' + sessionId;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); }, 100);
+                showToast('Starting download...', 'info');
               };
             }
           }
@@ -1923,6 +1957,9 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
     function closeModal() {
       const modal = document.getElementById('previewModal');
       modal.classList.remove('active');
+      const img = document.getElementById('modalImage');
+      img.style.transform = 'scale(1)';
+      img.style.cursor = 'zoom-in';
       document.getElementById('modalVideo').pause();
       document.getElementById('modalVideo').src = '';
       document.getElementById('modalAudio').pause();
@@ -2267,7 +2304,7 @@ _SESSION_PAGE = """<!DOCTYPE html>
 
   <div class="modal-overlay" id="previewModal" onclick="closePreview()">
     <div class="modal-content" onclick="event.stopPropagation()">
-      <img id="previewImage" src="" alt="Preview" style="display:none">
+      <img id="previewImage" src="" alt="Preview" style="display:none; cursor: zoom-in; transition: transform 0.2s;" onclick="toggleZoom(event, this)">
       <video id="previewVideo" controls style="display:none"></video>
       <audio id="previewAudio" controls style="display:none; width:100%; max-width:400px;"></audio>
       <button class="btn btn-outline btn-sm" onclick="closePreview()">CLOSE PREVIEW</button>
@@ -2336,6 +2373,9 @@ _SESSION_PAGE = """<!DOCTYPE html>
 
     function closePreview() {
       document.getElementById('previewModal').classList.remove('active');
+      const img = document.getElementById('previewImage');
+      img.style.transform = 'scale(1)';
+      img.style.cursor = 'zoom-in';
       document.getElementById('previewVideo').pause();
       document.getElementById('previewVideo').src = '';
       document.getElementById('previewAudio').pause();
@@ -2419,7 +2459,13 @@ _SESSION_PAGE = """<!DOCTYPE html>
             dlAllBtn.style.display = 'inline-flex';
             dlAllBtn.onclick = function(e) {
               e.preventDefault();
-              FileDownloadService.saveLocally('/api/download-all/' + SESSION_ID, 'mobile2pc_' + SESSION_ID + '.zip');
+              const a = document.createElement('a');
+              a.style.display = 'none';
+              a.href = '/api/download-all/' + SESSION_ID;
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(() => { document.body.removeChild(a); }, 100);
+              showToast('Starting download...', 'info');
             };
           }
         }
