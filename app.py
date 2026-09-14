@@ -1777,10 +1777,6 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
 
         <div class="received-files" id="fileList"></div>
 
-        <a id="downloadAllBtn" class="btn btn-outline" style="display:none; width: 100%; margin-top: 16px;" href="#">
-          <span class="material-icons-round">download</span> DOWNLOAD ALL (ZIP)
-        </a>
-
         <button class="btn btn-danger" style="width: 100%; margin-top: 24px;" onclick="closeSession()" id="closeBtn">
           CLOSE SESSION
         </button>
@@ -1920,21 +1916,6 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
             });
             document.getElementById('statusBadge').innerHTML =
               '<span class="status-dot active"></span> CONNECTION ACTIVE <span id="countdown"></span>';
-
-            if (data.files.length > 1) {
-              const dlAllBtn = document.getElementById('downloadAllBtn');
-              dlAllBtn.style.display = 'inline-flex';
-              dlAllBtn.onclick = function(e) {
-                e.preventDefault();
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = '/api/download-all/' + sessionId;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => { document.body.removeChild(a); }, 100);
-                showToast('Starting download...', 'info');
-              };
-            }
           }
         } catch (e) {}
       }, 2000);
@@ -1976,6 +1957,12 @@ _RECEIVE_PAGE = """<!DOCTYPE html>
         showToast('Error closing session', 'error');
       }
     }
+
+    window.addEventListener('beforeunload', function (e) {
+      if (sessionId) {
+        navigator.sendBeacon('/api/close-session/' + sessionId);
+      }
+    });
   </script>
 </body>
 </html>"""
@@ -2029,7 +2016,10 @@ _SEND_TO_PAGE = """<!DOCTYPE html>
     </div>
 
     <div id="mainContent" class="content animate-in">
-      <div class="mobile-status" id="sessionStatus">SESSION: {{SESSION_ID}}</div>
+      <div class="mobile-status" id="sessionStatus">
+        <span class="status-dot active" style="margin-right: 4px;"></span>
+        SESSION ACTIVE <span id="countdown"></span>
+      </div>
 
       <div id="uploadForm" class="drop-zone" style="display: block;">
         <span class="material-icons-round drop-zone-icon">cloud_upload</span>
@@ -2295,10 +2285,6 @@ _SESSION_PAGE = """<!DOCTYPE html>
       </div>
 
       <div id="filesContainer"></div>
-
-      <a id="downloadAllBtn" class="btn btn-outline download-all-btn" style="display:none" href="#">
-        <span class="material-icons-round">download</span> DOWNLOAD ALL (ZIP)
-      </a>
     </div>
   </main>
 
@@ -2453,21 +2439,6 @@ _SESSION_PAGE = """<!DOCTYPE html>
               container.appendChild(el);
             }
           });
-
-          if (data.files.length > 1) {
-            const dlAllBtn = document.getElementById('downloadAllBtn');
-            dlAllBtn.style.display = 'inline-flex';
-            dlAllBtn.onclick = function(e) {
-              e.preventDefault();
-              const a = document.createElement('a');
-              a.style.display = 'none';
-              a.href = '/api/download-all/' + SESSION_ID;
-              document.body.appendChild(a);
-              a.click();
-              setTimeout(() => { document.body.removeChild(a); }, 100);
-              showToast('Starting download...', 'info');
-            };
-          }
         }
       } catch(e){}
     }, 2000);
